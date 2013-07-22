@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>JS fractals</title>
+    <style type="text/css">
+        .container {
+            width: 680px;
+            margin: 20px;
+        }
+        #drawfrac {
+            margin: 40px;
+            border: 2px solid black;
+        }
+        .table {
+            width: 100%;
+            border-spacing: 5px;
+            line-height: 170%;
+        }
+        .baseprop, .fracprop {
+            width: 50%;
+            background-color: #F0F0C0;
+            border: 1px solid black;
+            padding: 0 10px;
+            vertical-align: top;
+        }
+        .description {
+            background-color: #C0F0C0;
+            border: 1px solid black;
+            padding: 0 10px;
+        }
+        .title {
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <canvas id="drawfrac" width="600px" height="600px"></canvas>
+
+        <table class="table">
+        <tr>
+        <td class="baseprop">
+            <div class="title">Baseline</div>
+            <input id="showbase" name="show" type="checkbox" checked>Show<br>
+            Normal color: <input id="basenormcolor" name="ncolor" type="text" value="#000080"><br>
+            Inverse color: <input id="baseinvcolor" name="icolor" type="text" value="#800000"><br>
+            Line width: <input id="basewidth" name="bwidth" type="text" value="2"><br>
+            Background: <input id="backcolor" name="bcolor" type="text" value="#D0D0D0"><br>
+        </td>
+        <td class="fracprop">
+            <div class="title">Fractal</div>
+            <input id="showfrac" name="show" type="checkbox" checked>Show<br>
+            Fractal iterations:
+            <select id="fracdepth">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="-1">as needed</option>
+            </select><br>
+            Fractal color: <input id="fraccolor" name="fcolor" type="text" value="#40F040"><br>
+            Line width: <input id="fracwidth" name="fwidth" type="text" value="2"><br>
+        </td>
+        </tr>
+        <tr>
+        <td class="description" colspan="2">
+            <div class="title">Description</div>
+            A simple JS program to draw a simplest type of fractals. Use:<br>
+            <i>Shift + Left Click on baseline segment</i> to add node to baseline;<br>
+            <i>Ctrl + Left Click on baseline node</i> to remove node;<br>
+            <i>Left Click on node</i> to move node;<br>
+            <i>Left Click on segment</i> to reverse fractal on that segment;<br>
+            <i>Left Click on empty space</i> to move whole figure.
+        </td>
+        </tr>
+        </table>
+    </div>
+
+    <script src="frac.js"></script>
+
+</body>
+</html>
