@@ -262,58 +262,51 @@ document.body.onload = function() {
 
     function mouseMove(event) {
         if (mouseCapture) {
-            if (event.buttons & 1) {
-                var p = getPoint(event);
-                if (!isNaN(movingPoint)) {
-                    frac.moveBaselineNode(movingPoint, p);
-                    redraw();
-                }
-                else if (!isNaN(movingBaseline.x)) {
-                    frac.moveBaseline({ x: p.x - movingBaseline.x,
-                        y: p.y - movingBaseline.y});
-                    movingBaseline = p;
-                    redraw();
-                }
+            var p = getPoint(event);
+            if (!isNaN(movingPoint)) {
+                frac.moveBaselineNode(movingPoint, p);
+                redraw();
             }
-            else {
-                mouseUp(event);
+            else if (!isNaN(movingBaseline.x)) {
+                frac.moveBaseline({ x: p.x - movingBaseline.x,
+                    y: p.y - movingBaseline.y});
+                movingBaseline = p;
+                redraw();
             }
         }
     }
 
     function mouseDown(event) {
         var p = getPoint(event), i;
-        if (event.buttons & 1) {
-            if (event.shiftKey) {
-                i = frac.getBaselineSegmentIndex(p);
-                if (!isNaN(i)) {
-                    frac.addBaselineNode(i, p);
-                    redraw();
-                }
+        if (event.shiftKey) {
+            i = frac.getBaselineSegmentIndex(p);
+            if (!isNaN(i)) {
+                frac.addBaselineNode(i, p);
+                redraw();
             }
-            else if (event.ctrlKey) {
-                i = frac.getBaselineNodeIndex(p);
-                if (!isNaN(i) && i != 0 && i != frac.getBaseline().length-1) {
-                    frac.deleteBaselineNode(i);
-                    redraw();
-                }
+        }
+        else if (event.ctrlKey) {
+            i = frac.getBaselineNodeIndex(p);
+            if (!isNaN(i) && i != 0 && i != frac.getBaseline().length-1) {
+                frac.deleteBaselineNode(i);
+                redraw();
+            }
+        }
+        else {
+            i = frac.getBaselineNodeIndex(p);
+            if (!isNaN(i)) {
+                mouseCapture = true;
+                movingPoint = i;
             }
             else {
-                i = frac.getBaselineNodeIndex(p);
+                i = frac.getBaselineSegmentIndex(p);
                 if (!isNaN(i)) {
-                    mouseCapture = true;
-                    movingPoint = i;
+                    frac.toggleInverse(i - 1);
+                    redraw();
                 }
                 else {
-                    i = frac.getBaselineSegmentIndex(p);
-                    if (!isNaN(i)) {
-                        frac.toggleInverse(i - 1);
-                        redraw();
-                    }
-                    else {
-                        mouseCapture = true;
-                        movingBaseline = p;
-                    }
+                    mouseCapture = true;
+                    movingBaseline = p;
                 }
             }
         }
