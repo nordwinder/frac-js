@@ -9,8 +9,19 @@
             margin: 20px;
         }
         #drawfrac {
-            margin: 40px;
+            margin: 40px 40px 0px 40px;
             border: 2px solid black;
+        }
+        .progress {
+            width: 600px;
+            height: 60px;
+            margin: auto;
+        }
+        #progressbar {
+            width: 79%;
+        }
+        #cancel {
+            width: 20%
         }
         .table {
             width: 100%;
@@ -40,6 +51,11 @@
     <div class="container">
         <canvas id="drawfrac" width="600px" height="600px"></canvas>
 
+        <div class="progress">
+            <progress id="progressbar" value="0" max="1"></progress>
+            <input type="button" id="cancel" name="cancel" value="Cancel" />
+        </div>
+
         <table class="table">
         <tr>
         <td class="baseprop">
@@ -61,6 +77,8 @@
             <option value="3">3</option>
             <option value="4">4</option>
             <option value="5">5</option>
+            <option value="7">7</option>
+            <option value="9">9</option>
             <option value="-1">as needed</option>
             </select><br>
             Fractal color: <input id="fraccolor" name="fcolor" type="text" value="#40F040"><br>

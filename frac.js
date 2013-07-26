@@ -23,6 +23,15 @@ function fracObject() {
     // хватает. И пожалуй, inverse - не лучшее название.
     own.inverse = [ [ 0 ], [ 1 ] ];
 
+// Для организации отдельного потока рисования. :)
+    own.working = false;
+    own.cancel = false;
+    // Максимальное число линий рисуемое за один раз. После - перерыв для браузера,
+    // посмотреть не ушел ли пользователь.
+    own.maxLinesPerIterate = 1e4;
+    // Максимальная глубина итераций.
+    own.maxDepth = 10;
+
     // Нормализация. Масштабирование и поворот, ничего сложного.
     own.normalize = function() {
         own.normalized = [];
@@ -61,36 +70,56 @@ function fracObject() {
         return fig;
     };
 
-    // Рекурсивная функция перерисовки фрактала.
-    own.redrawFrac = function(context, base0, base1, depth, inv) {
-        var i, fig;
-        if (depth == 0 || depth < -10)
-            context.lineTo(base1.x, base1.y);
-        else {
-            fig = own.transform(base0, base1, inv);
-            for (i = 1; i < fig.length; i++)
-                if (depth == 1 || (depth < 0 &&
-                    Math.pow(fig[i].x - fig[i-1].x, 2) +
-                    Math.pow(fig[i].y - fig[i-1].y, 2) < 3*3)
-                ) {
-                    context.lineTo(fig[i].x, fig[i].y);
-                }
-                else {
-                    own.redrawFrac(context, fig[i-1], fig[i],
-                                   depth-1, own.inverse[inv][i-1]);
-                }
+    // Рисование фракталов без рекурсивных вызовов. Рекурсия заменяется сложным объектом iter,
+    // который хранит информацию о текущей итерации. Кроме того, ее можно остановить в любой
+    // момент, сохранив текущее состояние iter, а затем продолжить выполнение.
+    own.redrawIteration = function(iter) {
+        var n = own.baseline.length, fd = own.fracDepth;
+        var d = iter.it.length - 1;
+        var i = iter.it[d].idx;
+        var next, invnext, count = 0;
+        iter.drawCtx.beginPath();
+        iter.drawCtx.moveTo(iter.it[d].fig[i].x, iter.it[d].fig[i].y);
+        while (!(d == 0 && i == n) && count < own.maxLinesPerIterate && !own.cancel) {
+            i++;
+            while (i == n && d > 0) {
+                i = iter.it[--d].idx + 1;
+                iter.it.pop();
+            }
+            iter.it[d].idx = i;
+            if (d == 0 && i == n)
+                break;
+            if ((fd >= 0 && d == fd) || (fd < 0 && (d == own.maxDepth ||
+                Math.pow(iter.it[d].fig[i].x - iter.it[d].fig[i-1].x, 2) +
+                Math.pow(iter.it[d].fig[i].y - iter.it[d].fig[i-1].y, 2) < 3*3))) {
+                iter.drawCtx.lineTo(iter.it[d].fig[i].x, iter.it[d].fig[i].y);
+                count++;
+            }
+            else {
+                invnext = own.inverse[iter.it[d].inv][i-1];
+                next = own.transform(iter.it[d].fig[i-1], iter.it[d].fig[i], invnext);
+                iter.it.push({ fig: next, idx: 0, inv: invnext });
+                d++; i = 0;
+            }
         }
-    };
+        iter.drawCtx.stroke();
+        iter.fprogress(iter.it[0].idx, n);
+        if ((d == 0 && i == n) || own.cancel) {
+            iter.fcomplete(own.cancel);
+            own.working = false; own.cancel = false;
+        }
+        else {
+            setTimeout(function() { own.redrawIteration(iter); }, 200);
+        }
+    }
 
     // И открытая функция, для вызова при необходимости перерисовки.
-    that.redraw = function(context) {
-        var i, n = own.baseline.length;
-        context.beginPath();
-        context.moveTo(own.baseline[0].x, own.baseline[0].y);
-        for (i = 1; i < n; i++)
-            own.redrawFrac(context, own.baseline[i-1], own.baseline[i],
-                           own.fracDepth, own.inverse[0][i-1]);
-        context.stroke();
+    that.redraw = function(context, fnProgress, fnComplete) {
+        var iteration0 = { fig: own.baseline, idx: 0, inv: 0 };
+        var iter = { it: [ iteration0 ], drawCtx: context,
+            fprogress: fnProgress, fcomplete: fnComplete };
+        own.working = true; own.cancel = false;
+        own.redrawIteration(iter);
     };
 
     // Это понятно. Интересно, можно сделать возвращаемое значение read only?
@@ -100,6 +129,14 @@ function fracObject() {
 
     that.getInverse = function() {
         return own.inverse[0];
+    }
+
+    that.isWorking = function() {
+        return own.working;
+    }
+
+    that.cancelDrawing = function() {
+        if (own.working) own.cancel = true;
     }
 
     // Проверяет, попадает ли заданная точка на вершину базовой линии.
@@ -179,12 +216,25 @@ document.body.onload = function() {
     // либо надо каждый раз закрывать.
     var canvas = document.getElementById("drawfrac");
     var context = canvas.getContext("2d");
+    var progressbar = document.getElementById("progressbar");
 
     // Значения настроек.
     var showBase, showFrac;
     var baseNormColor, baseInvColor, backColor, fracColor;
     var baseWidth, fracWidth;
     var fracDepth;
+
+    function showProgress(progress, total) {
+        progressbar.max = total;
+        progressbar.value = progress;
+    }
+
+    function fracDrawingComplete(canceled) {
+        if (!canceled) {
+            progressbar.max = 1;
+            progressbar.value = 1;
+        }
+    }
 
     // Перерисовка, да.
     function redraw() {
@@ -221,12 +271,13 @@ document.body.onload = function() {
         if (showFrac) {
             context.strokeStyle = fracColor;
             context.lineWidth = fracWidth;
-            frac.redraw(context);
+            frac.redraw(context, showProgress, fracDrawingComplete);
         }
     }
 
     // Функция, которая забирает настройки из DOM и складывает в локальные переменные.
     function updateOptions() {
+        if (frac.isWorking()) return;
         var i, color, reg = /^#[0-9a-f]{6}$|^#[0-9a-f]{3}$/i;
         showBase = document.getElementById("showbase").checked;
         showFrac = document.getElementById("showfrac").checked;
@@ -261,6 +312,7 @@ document.body.onload = function() {
     var movingBaseline = { x: NaN, y: NaN }; // или всей фигуры
 
     function mouseMove(event) {
+        if (frac.isWorking()) return;
         if (mouseCapture) {
             var p = getPoint(event);
             if (!isNaN(movingPoint)) {
@@ -277,6 +329,7 @@ document.body.onload = function() {
     }
 
     function mouseDown(event) {
+        if (frac.isWorking()) return;
         var p = getPoint(event), i;
         if (event.shiftKey) {
             i = frac.getBaselineSegmentIndex(p);
@@ -286,7 +339,7 @@ document.body.onload = function() {
             }
         }
         else if (event.ctrlKey || event.keyCode == 91 || event.keyCode == 93 ||
-			event.keyCode == 157 || event.keyCode == 224) {
+            event.keyCode == 157 || event.keyCode == 224) {
             i = frac.getBaselineNodeIndex(p);
             if (!isNaN(i) && i != 0 && i != frac.getBaseline().length-1) {
                 frac.deleteBaselineNode(i);
@@ -334,6 +387,7 @@ document.body.onload = function() {
     document.getElementById("basewidth").onchange = updateOptions;
     document.getElementById("fracwidth").onchange = updateOptions;
     document.getElementById("fracdepth").onchange = updateOptions;
+    document.getElementById("cancel").onclick = function() { frac.cancelDrawing(); }
     // И начали...
     redraw();
 }
