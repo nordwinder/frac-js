@@ -285,7 +285,8 @@ document.body.onload = function() {
                 redraw();
             }
         }
-        else if (event.ctrlKey) {
+        else if (event.ctrlKey || event.keyCode == 91 || event.keyCode == 93 ||
+			event.keyCode == 157 || event.keyCode == 224) {
             i = frac.getBaselineNodeIndex(p);
             if (!isNaN(i) && i != 0 && i != frac.getBaseline().length-1) {
                 frac.deleteBaselineNode(i);
